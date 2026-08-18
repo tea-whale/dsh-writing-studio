@@ -1,0 +1,60 @@
+{
+  "name": "dsh-writing-studio",
+  "version": "0.1.0",
+  "description": "DeepSeek Harness (DSH) 写作工具插件：长文工作流（建项目、大纲、风格控制、逐节草稿/审校、汇编成稿）+ 8 套常用写作模板，全部状态落盘、跨轮次续写。零运行时依赖。",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./package.json": "./package.json"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "index.js",
+    "store.js",
+    "templates.js",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test --test-isolation=none test/store.test.mjs test/schema-check.mjs"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "writing",
+    "ai-writing",
+    "writing-workflow",
+    "templates"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tea-whale/dsh-writing-studio.git"
+  },
+  "bugs": {
+    "url": "https://github.com/tea-whale/dsh-writing-studio/issues"
+  },
+  "homepage": "https://github.com/tea-whale/dsh-writing-studio#readme",
+  "license": "MIT",
+  "devDependencies": {
+    "@deepseek-ai/cordis": "4.0.1",
+    "@deepseek-ai/dsh-agent": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-code-runtime": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-invariants": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-llm": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-scope": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-session": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-system-prompt": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-timeout": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-tools": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-user-approval": "0.1.0-rc.6"
+  }
+}

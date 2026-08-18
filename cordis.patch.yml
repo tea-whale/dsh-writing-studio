@@ -1,0 +1,7 @@
+# dsh-writing-studio 插件层：把自己的行插入 profile 组合。
+# 行内只有 id / name 与默认配置，config 可被 profile 的 cordis.patch.yml 覆盖。
+- insert:
+    - id: writing-studio
+      name: 'dsh-writing-studio'
+      config:
+        rootDir: '.writing-studio'

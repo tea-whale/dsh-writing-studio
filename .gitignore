@@ -1,0 +1,11 @@
+# 依赖与构建产物
+node_modules/
+npm-debug.log*
+
+# 写作工作台的数据目录（用户写作项目，不进仓库）
+.writing-studio/
+
+# 系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
