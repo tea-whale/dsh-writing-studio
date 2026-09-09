@@ -120,7 +120,7 @@ dsh-writing-studio
     └── schema-check.mjs     # 官方 schema 校验 + 端到端工作流模拟
 ```
 
-插件运行时零依赖（只 import Node 内置模块），工具定义直接采用 DSH registry 的 JSON Schema 子集，避免本地 `link:` 挂载时 ESM 符号链接解析问题。测试依赖 `@deepseek-ai/dsh-tools` 用 harness 官方校验器验证全部工具定义。插件运行时要求 **Node ≥ 20**；测试脚本用 `--test-isolation=none`，需要 **Node ≥ 22.8**（CI 跑 22 与 24 两个版本）。
+插件运行时零依赖（只 import Node 内置模块），工具定义直接采用 DSH registry 的 JSON Schema 子集，避免本地 `link:` 挂载时 ESM 符号链接解析问题。测试依赖 `@deepseek-ai/dsh-tools` 用 harness 官方校验器验证全部工具定义。插件运行时要求 **Node ≥ 20**；测试脚本用 `--experimental-test-isolation=none`（Node 22 与 24 都认这个拼写，24 里的稳定名是 `--test-isolation`），CI 跑 22 与 24 两个版本。
 
 ```sh
 npm install

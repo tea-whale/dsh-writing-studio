@@ -20,8 +20,8 @@
 
 ### Changed
 
-- `engines.node` 从 `>=18.0.0` 提到 `>=20.0.0`（Node 18 已 EOL；测试脚本用 `--test-isolation=none`，需要 Node ≥ 22.8）。
-- CI 增加 Node 22 / 24 矩阵；缺少 `@deepseek-ai/dsh-tools` 时在 CI 中硬失败，不再"零校验还绿"。
+- `engines.node` 从 `>=18.0.0` 提到 `>=20.0.0`（Node 18 已 EOL）。
+- 测试脚本的隔离开关改用 `--experimental-test-isolation=none`（Node 22 只认这个拼写，Node 24 两者都认），CI 因此可以同时跑 Node 22 与 24；缺少 `@deepseek-ai/dsh-tools` 时在 CI 中硬失败，不再"零校验还绿"。
 - `package-lock.json` 的 `resolved` 全部改回官方 registry（原为 `registry.npmmirror.com`，已逐个核对 integrity 一致）；`.npmrc` 显式声明官方源。
 - 新增 `.github/dependabot.yml`，跟踪 `@deepseek-ai/*` 的 rc 版本线。
 

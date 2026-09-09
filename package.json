@@ -19,7 +19,7 @@
     "README.md"
   ],
   "scripts": {
-    "test": "node --test --test-isolation=none test/store.test.mjs test/schema-check.mjs test/regression.test.mjs"
+    "test": "node --test --experimental-test-isolation=none test/store.test.mjs test/schema-check.mjs test/regression.test.mjs"
   },
   "dsh": {
     "bundle": {
