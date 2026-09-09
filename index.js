@@ -19,7 +19,9 @@ import {
   findSection,
   listProjects,
   projectFilePath,
+  promoteStatus,
   readProject,
+  slugify,
   updateProject,
 } from "./store.js";
 import {
@@ -35,6 +37,19 @@ export const inject = ["tools"];
 
 /** 会话 → 最近一次使用的项目文件，status 等省略 project 参数时靠它兜底。 */
 const lastProjectBySession = new Map();
+/** 记多少个会话就够了；长跑进程里这个 Map 不能无限长。 */
+const MAX_REMEMBERED_SESSIONS = 500;
+
+/** 记录本会话的项目文件，按插入顺序淘汰最旧的会话。 */
+function rememberProject(exec, file) {
+  const key = sessionKey(exec);
+  lastProjectBySession.delete(key);
+  lastProjectBySession.set(key, file);
+  while (lastProjectBySession.size > MAX_REMEMBERED_SESSIONS) {
+    const oldest = lastProjectBySession.keys().next().value;
+    lastProjectBySession.delete(oldest);
+  }
+}
 
 /* ────────────────────────── 基础校验与渲染 ────────────────────────── */
 
@@ -173,25 +188,33 @@ async function openProject(exec, args, config) {
       if (projects.length === 0) {
         fail("这个工作目录还没有写作项目，先用 writing_project_create 创建一个");
       }
+      // 有多个项目时不再猜"最近修改的那个"：新会话/重启后猜错就会改到别的稿子上。
+      if (projects.length > 1) {
+        fail(
+          `本会话还没有指定项目，而当前目录有 ${projects.length} 个项目：${projects
+            .map((entry) => `${entry.key}（${entry.title}）`)
+            .join("、")}。请显式传 project，或先调 writing_project_open 选定一个`,
+        );
+      }
       file = projects[0].file;
     }
   }
   const project = await readProject(file);
-  lastProjectBySession.set(sessionKey(exec), file);
+  rememberProject(exec, file);
   return { project, file, paths };
 }
 
 /** 把汇编输出路径限制在存储根目录内。 */
 function resolveOutputPath(paths, projectKey, output) {
-  if (output === undefined || output === null || String(output).trim() === "") {
-    return path.join(paths.manuscripts, `${projectKey}.md`);
-  }
-  let rel = String(output).trim().replace(/\\/g, "/");
+  const explicit = output !== undefined && output !== null && String(output).trim() !== "";
+  // 默认文件名也要重新 slugify：项目 JSON 是可手改、可提交 git 的，
+  // 里面被改过的 key 不能变成"写到存储根目录之外"的入口。
+  let rel = explicit ? String(output).trim().replace(/\\/g, "/") : `manuscripts/${slugify(projectKey)}.md`;
   if (path.isAbsolute(rel)) fail("output 只能是相对存储根目录的路径，不能是绝对路径");
   if (!rel.toLowerCase().endsWith(".md")) rel += ".md";
   const resolved = path.resolve(paths.base, rel);
   if (resolved !== paths.base && !resolved.startsWith(paths.base + path.sep)) {
-    fail(`output 越界：${output}`);
+    fail(`output 越界：${explicit ? output : rel}`);
   }
   return resolved;
 }
@@ -268,7 +291,7 @@ const createProjectTool = defineTool({
       thesis: asString(args, "thesis")?.trim() ?? "",
       author: asString(args, "author")?.trim() ?? "",
     });
-    lastProjectBySession.set(sessionKey(exec), file);
+    rememberProject(exec, file);
     return [
       `已创建写作项目「${title}」（项目名 ${project.key}）。`,
       `- 模板：${template.name}`,
@@ -447,28 +470,31 @@ const sectionSaveTool = defineTool({
     section: S("章节定位：1 起始序号（如 \"1\"）、id（如 \"s1\"）或完整标题"),
     content: S("本节正文（markdown，完整正文，必填）"),
     title: OS("可选：同时修改本节标题"),
-    status: E(["drafting", "drafted", "reviewed", "done"], "可选：本节状态，默认 drafted"),
+    status: E(["drafting", "drafted", "reviewed", "done"], "可选：本节状态。不给时只推进不后退（planned/drafting → drafted，已 reviewed/done 的节保持原状态）"),
   },
   required: ["section", "content"],
   async execute(args, exec) {
     const sectionRef = asSectionRef(args);
     const content = asString(args, "content", { required: true, trim: false });
     if (content.trim().length === 0) fail("参数 content 不能为空");
-    const status = asEnum(args, "status", ["drafting", "drafted", "reviewed", "done"]) ?? "drafted";
+    const explicitStatus = asEnum(args, "status", ["drafting", "drafted", "reviewed", "done"]);
     const { project, file } = await openProject(exec, args, config);
     const { index, section } = findSection(project, sectionRef);
     const title = asString(args, "title")?.trim();
+    let savedStatus = explicitStatus;
     await updateProject(file, (current) => {
       const target = findSection(current, sectionRef).section;
       target.content = content;
       target.words = countWords(content);
-      target.status = status;
+      // 默认只推进不后退：改一个错别字不该把已审校/已定稿的节打回 drafting。
+      target.status = explicitStatus ?? promoteStatus(target.status, "drafted");
+      savedStatus = target.status;
       if (title) target.title = title;
       addHistory(current, "section-save", `保存第 ${index + 1} 节「${target.title}」（${target.words} 字）`);
       return current;
     });
     return [
-      `已保存第 ${index + 1} 节「${title ?? section.title}」：约 ${countWords(content)} 字，状态 ${status}。`,
+      `已保存第 ${index + 1} 节「${title ?? section.title}」：约 ${countWords(content)} 字，状态 ${savedStatus}。`,
       renderProgress((await readProject(file))),
     ].join("\n");
   },
@@ -514,7 +540,7 @@ const sectionReadTool = defineTool({
 const sectionReviewTool = defineTool({
   name: "writing_section_review",
   description:
-    "审校一个章节：记录审校意见（comments）与问题清单（issues）。若给出修订稿 revised_content，则用修订稿替换正文并把状态置为 reviewed；decision=pass 表示定稿。审校后调 writing_section_save 或直接进入下一节。",
+    "审校一个章节：记录审校意见（comments）与问题清单（issues）。若给出修订稿 revised_content，则用修订稿替换正文并把状态置为 reviewed；decision=pass 表示定稿，decision=revise 退回修改；两者都不给则只记录意见、不改变状态。审校后调 writing_section_save 或直接进入下一节。",
   properties: {
     project: PROJECT_OPT,
     working_dir: WORKING_DIR,
@@ -550,12 +576,14 @@ const sectionReviewTool = defineTool({
       if (revised !== undefined) {
         target.content = revised;
         target.words = countWords(revised);
-        target.status = "reviewed";
+        target.status = promoteStatus(target.status, "reviewed");
       } else if (decision === "pass") {
-        target.status = "reviewed";
-      } else {
+        target.status = promoteStatus(target.status, "reviewed");
+      } else if (decision === "revise") {
+        // 显式判 revise 才回退：退回可继续改的状态，但不清空正文。
         target.status = (target.content ?? "").trim().length > 0 ? "drafting" : "planned";
       }
+      // 只记录意见（既没有 decision 也没有 revised_content）时不动状态。
       addHistory(current, "section-review", `审校第 ${index + 1} 节「${target.title}」`);
       return current;
     });
@@ -635,9 +663,11 @@ const assembleTool = defineTool({
     await mkdir(path.dirname(outputFile), { recursive: true });
     await writeFile(outputFile, `${frontMatter}\n\n${body.join("\n")}\n`, "utf8");
     await updateProject(file, (current) => {
+      const byId = new Map(current.sections.map((entry) => [entry.id, entry]));
       for (const section of included) {
-        const target = findSection(current, section.id).section;
-        target.status = "done";
+        const target = byId.get(section.id);
+        // 只有已经审校过的章节才随汇编定稿；未审校的草稿保持原状态。
+        if (target && ["reviewed", "done"].includes(target.status)) target.status = "done";
       }
       addHistory(current, "assemble", `汇编 ${included.length} 节 → ${outputFile}`);
       return current;

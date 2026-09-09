@@ -52,7 +52,7 @@ export const TEMPLATES = Object.freeze([
     name: "公众号文章",
     genre: "公众号文章",
     defaultStyle: {
-      tone: "亲切有力",
+      tone: "亲切温暖",
       audience: "大众读者",
       language: "中文",
       pov: "第二人称",

@@ -1,0 +1,18 @@
+version: 2
+updates:
+  # @deepseek-ai/dsh-* 是 rc 版本线，上游一发新版就该跟一次，否则测试用的
+  # schema 校验器会和实际运行的 harness 悄悄分叉。
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      deepseek-harness:
+        patterns:
+          - "@deepseek-ai/*"
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

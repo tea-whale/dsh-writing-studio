@@ -17,7 +17,13 @@ import { apply } from "../index.js";
 let assertSupportedJsonSchema;
 try {
   ({ assertSupportedJsonSchema } = await import("@deepseek-ai/dsh-tools"));
-} catch {
+} catch (error) {
+  // CI 里缺了这个包就等于"零校验还绿"，必须硬失败；本地缺依赖只降级提示。
+  if (process.env.CI) {
+    throw new Error(
+      `schema-check: CI 环境必须安装 @deepseek-ai/dsh-tools 才能运行官方 schema 校验（${error?.message ?? error}）`,
+    );
+  }
   console.warn(
     "schema-check: 未找到 @deepseek-ai/dsh-tools，跳过官方 JSON Schema 校验（运行 npm install 后恢复）",
   );

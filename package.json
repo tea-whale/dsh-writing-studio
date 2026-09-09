@@ -1,6 +1,6 @@
 {
   "name": "dsh-writing-studio",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "DeepSeek Harness (DSH) 写作工具插件：长文工作流（建项目、大纲、风格控制、逐节草稿/审校、汇编成稿）+ 8 套常用写作模板，全部状态落盘、跨轮次续写。零运行时依赖。",
   "type": "module",
   "main": "index.js",
@@ -9,7 +9,7 @@
     "./package.json": "./package.json"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
   "files": [
     "index.js",
@@ -19,7 +19,7 @@
     "README.md"
   ],
   "scripts": {
-    "test": "node --test --test-isolation=none test/store.test.mjs test/schema-check.mjs"
+    "test": "node --test --test-isolation=none test/store.test.mjs test/schema-check.mjs test/regression.test.mjs"
   },
   "dsh": {
     "bundle": {

@@ -92,7 +92,7 @@ dsh plugin --profile web remove dsh-writing-studio
         └── <项目名>.md          # 汇编后的成稿
 ```
 
-项目文件是普通 JSON，可提交进 git、拷走或手动编辑。默认用会话的 `header.cwd`；工具参数 `working_dir` 可指定其它目录，插件行 `config.rootDir` 可改默认目录名。
+项目文件是普通 JSON，可提交进 git、拷走或手动编辑。默认用会话的 `header.cwd`；工具参数 `working_dir` 可指定其它目录；插件行 `config.rootDir` 可改默认目录名（默认 `.writing-studio`），`config.storageRoot` 可指定一个绝对路径作为存储根，优先级高于 `rootDir`。
 
 ## 自定义模板与风格
 
@@ -108,16 +108,19 @@ dsh plugin --profile web remove dsh-writing-studio
 ```text
 dsh-writing-studio
 ├── index.js                 # 插件入口：name / inject / apply + 11 个工具
-├── store.js                 # 项目读写、字数统计、路径安全、原子写入
+├── store.js                 # 项目读写、状态机、字数统计、路径安全、原子写入
 ├── templates.js             # 8 套模板 + 风格枚举/校验
 ├── cordis.patch.yml         # bundle 补丁：把插件行 insert 进 profile
 ├── package.json             # dsh.bundle.patch 声明与测试依赖
+├── .npmrc / package-lock.json  # 测试依赖的安装配置（运行时零依赖）
+├── CHANGELOG.md
 └── test/
     ├── store.test.mjs       # 存储层单元测试
+    ├── regression.test.mjs  # 已修缺陷的回归测试（并发、越界、状态回退…）
     └── schema-check.mjs     # 官方 schema 校验 + 端到端工作流模拟
 ```
 
-插件运行时零依赖（只 import Node 内置模块），工具定义直接采用 DSH registry 的 JSON Schema 子集，避免本地 `link:` 挂载时 ESM 符号链接解析问题。测试依赖 `@deepseek-ai/dsh-tools` 用 harness 官方校验器验证全部工具定义（测试脚本使用 `--test-isolation`，本地跑测试建议 Node 24，CI 使用 Node 24）。
+插件运行时零依赖（只 import Node 内置模块），工具定义直接采用 DSH registry 的 JSON Schema 子集，避免本地 `link:` 挂载时 ESM 符号链接解析问题。测试依赖 `@deepseek-ai/dsh-tools` 用 harness 官方校验器验证全部工具定义。插件运行时要求 **Node ≥ 20**；测试脚本用 `--test-isolation=none`，需要 **Node ≥ 22.8**（CI 跑 22 与 24 两个版本）。
 
 ```sh
 npm install
@@ -130,6 +133,9 @@ npm test
 - 风格字段是「提示合同」而非自动风格检测；最终质量取决于模型。
 - `writing_assemble` 默认覆盖 `manuscripts/<项目名>.md`，需要多版本时用 `output` 指定文件名。
 - 插件全局注册；在 agent 预设显式裁剪全局工具的会话里，`writing_*` 同样会被裁掉。
+- 同一工作目录存在多个项目时，省略 `project` 参数会报错要求显式指定（只有一个项目时仍自动选中），避免新会话/重启后改错稿子。
+- 章节状态只进不退：保存草稿、记录审校意见都不会把 `reviewed`/`done` 打回；只有 `writing_section_review({ decision: "revise" })` 会显式回退。
+- 并发保护是「进程内锁 + 独占创建」：同一进程内的并发调用安全；两个进程同时写同一个项目文件仍可能后写覆盖先写。
 
 ## 生态
 
